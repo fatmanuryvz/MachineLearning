@@ -1,0 +1,91 @@
+import pandas as pd
+import numpy as np
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+
+#car price predictor 
+
+df = pd.read_csv('http://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data', header=None)
+
+columns= ['symboling','normalized-losses','make','fuel-type','aspiration','num-of-doors','body-style','drive-wheels',
+          'engine-location','wheel-base','length','width','height','curb-weight','engine-type','num-of-cylinders','engine-size',
+          'fuel-system','bore','stroke','compression-ratio','horsepower','peak-rpm','city-mpg', 'highway-mpg','price']
+df.columns = columns
+
+df.info()
+
+df.head()
+
+df.replace('?' ,np.nan ,inplace=True )
+df.info()
+
+df.dropna(inplace=True)
+df.info()
+
+# sütunlara doğru veri tipini atama 
+int_columns = ['normalized-losses','horsepower','peak-rpm','price']
+float_columns = ['bore','stroke']
+
+for column in int_columns:
+    df[column] = df[column].astype(int)
+    
+for column in float_columns:
+    df[column] = df[column].astype(float)
+df.info()
+
+#object veri tipini int veri tipine döndürme
+df['num-of-doors'] = df['num-of-doors'].apply(lambda x: str(x).replace('four', '4'))
+df['num-of-doors'] = df['num-of-doors'].apply(lambda x: str(x).replace('two', '2'))
+df['num-of-doors'] = df['num-of-doors'].astype(int)
+df.info()
+
+#Veri setimizde bazı `object` veri tipinde olan sütunlar var ve biz bu sütunları makine öğrenmesi modellerimizde **doğrudan input olarak kullanamayız**. Henüz `object` veri tipindeki sütunları kullanarak modeller oluşturmayı öğrenmedik. O yüzden ilk aşamada sadece sayısal sütunlarla ilerleyelim.
+
+subset = ['normalized-losses','num-of-doors','wheel-base','length','width','height',
+          'curb-weight','num-of-cylinders','engine-size','bore','stroke','compression-ratio',
+          'horsepower','peak-rpm','city-mpg','highway-mpg','price']
+
+cars = df.loc[:,subset]
+
+cars.info()
+
+df.head()
+
+plt.figure(figsize=[18,12])
+sns.heatmap(cars.corr(), cmap="seismic" ,annot=True , vmin=-1, vmax=1, fmt='.2f');
+    
+
+#Statsmodel kullaranak modelleme
+
+cars.rename(columns = {'curb-weight':'curb_weight', 'engine-size':'engine_size', 'wheel-base':'wheel_base', 
+                       'num-of-cylinders':'num_of_cylinders', 'city-mpg':'city_mpg', 'highway-mpg':'highway_mpg'},
+            inplace=True)
+
+# Modeli Eğitme ve Model Sonucunu Görüntüleme
+lsm = smf.ols('price ~ curb_weight + width + engine_size + length + horsepower + wheel_base + num_of_cylinders + bore + city_mpg + highway_mpg', data=cars)
+fit1 = lsm.fit()
+fit1.summary()
+
+lsm = smf.ols('price ~ curb_weight + width + length + horsepower + wheel_base + num_of_cylinders', data=cars)
+fit2 = lsm.fit()
+fit2.summary()
+
+cars.price.hist()
+
+sqrt=np.sqrt(cars.price)
+
+sqrt.hist()
+
+cars['log_price']=np.log(cars.price)
+cars.log_price.hist()   
+#artık dağılım daha iyi gözükecek
+
+lsm = smf.ols('log_price ~ curb_weight + width + length + horsepower + wheel_base + num_of_cylinders', data = cars)
+fit3 = lsm.fit()
+fit3.summary()
+
+df.make.value_counts()
+
